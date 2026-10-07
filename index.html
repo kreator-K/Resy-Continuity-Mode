@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resy Continuity Mode — Emergency Floor & Reservation OS</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tailwind Configuration for Slate & Amber Restaurant Theme -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              900: '#78350f',
+            },
+            status: {
+              seated: '#10b981',
+              confirmed: '#3b82f6',
+              unverified: '#f59e0b',
+              available: '#64748b',
+              conflict: '#ef4444'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      body { background: white !important; color: black !important; }
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      .print-break { page-break-after: always; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #333 !important; padding: 6px 10px !important; color: black !important; }
+      th { background-color: #eee !important; font-weight: bold; }
+    }
+    .print-only { display: none; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- TOP EMERGENCY BANNER -->
+  <header class="border-b border-red-900/50 bg-red-950/40 backdrop-blur sticky top-0 z-50 no-print">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <span class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+        </span>
+        <div>
+          <span class="font-bold text-xs uppercase tracking-wider text-red-300 bg-red-900/60 px-2 py-0.5 rounded border border-red-700/60">
+            Resy Outage Active
+          </span>
+          <span class="ml-2 text-sm text-slate-300 font-medium">L'Ami Bistro • Friday Dinner Service</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls in Header -->
+      <div class="flex items-center space-x-3 text-sm">
+        <div class="bg-slate-900/80 px-3 py-1 rounded-md border border-slate-800 text-xs font-mono text-slate-400">
+          Simulated Clock: <span id="clock" class="text-amber-400 font-bold">05:45 PM</span>
+        </div>
+        <button onclick="window.print()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4H7v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          Print Run-Sheet
+        </button>
+        <button onclick="openWalkinModal()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1 rounded text-xs flex items-center gap-1.5 transition shadow-lg shadow-amber-500/20">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Seat Walk-In
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- METRICS OVERVIEW STRIP -->
+  <section class="bg-slate-900/50 border-b border-slate-800/80 px-4 py-3 no-print">
+    <div class="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-6 gap-3">
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total Bookings</div>
+        <div class="text-xl font-bold text-slate-100 flex items-baseline gap-1 mt-0.5">
+          <span id="stat-total-res">0</span>
+          <span class="text-xs text-slate-500 font-normal">parties</span>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Total Covers</div>
+        <div class="text-xl font-bold text-amber-400 flex items-baseline gap-1 mt-0.5">
+          <span id="stat-total-covers">0</span>
+          <span class="text-xs text-slate-500 font-normal">guests</span>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Verified by Staff</div>
+        <div class="text-xl font-bold text-blue-400 flex items-baseline gap-1 mt-0.5">
+          <span id="stat-verified">0</span>
+          <span class="text-xs text-slate-500 font-normal">confirmed</span>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Unverified / Risk</div>
+        <div class="text-xl font-bold text-amber-500 flex items-baseline gap-1 mt-0.5">
+          <span id="stat-unverified">0</span>
+          <span class="text-xs text-slate-500 font-normal">parties</span>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Online Inbound Queue</div>
+        <div class="text-xl font-bold text-emerald-400 flex items-baseline gap-1 mt-0.5">
+          <span id="stat-online-queue">0</span>
+          <span class="text-xs text-slate-500 font-normal">pending</span>
+        </div>
+      </div>
+      <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-lg">
+        <div class="text-[11px] font-medium uppercase tracking-wider text-slate-400">Kitchen Max Pacing</div>
+        <div class="text-xl font-bold text-purple-400 flex items-baseline gap-1 mt-0.5">
+          <span>16</span>
+          <span class="text-xs text-slate-500 font-normal">covers / 15m</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="max-w-7xl w-full mx-auto px-4 pt-4 flex items-center justify-between no-print">
+    <div class="flex space-x-1 bg-slate-900 p-1 rounded-lg border border-slate-800">
+      <button onclick="switchTab('manifest')" id="tab-btn-manifest" class="tab-btn px-4 py-1.5 rounded-md text-xs font-semibold text-white bg-slate-800 shadow-sm transition">
+        📋 Host Run-Sheet & Triage
+      </button>
+      <button onclick="switchTab('floor')" id="tab-btn-floor" class="tab-btn px-4 py-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+        🍽️ Floor Map & Tables
+      </button>
+      <button onclick="switchTab('pacing')" id="tab-btn-pacing" class="tab-btn px-4 py-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+        ⏱️ Kitchen Pacing & Timeline
+      </button>
+      <button onclick="switchTab('online')" id="tab-btn-online" class="tab-btn px-4 py-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-200 transition flex items-center gap-1.5">
+        🌐 Online Diner Portal
+        <span id="nav-online-badge" class="bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded-full text-[10px] font-mono border border-emerald-500/30">Live</span>
+      </button>
+      <button onclick="switchTab('ingest')" id="tab-btn-ingest" class="tab-btn px-4 py-1.5 rounded-md text-xs font-semibold text-slate-400 hover:text-slate-200 transition">
+        📥 Ingest Backup Data
+      </button>
+    </div>
+
+    <!-- Filter & Search Controls -->
+    <div id="manifest-filters" class="flex items-center space-x-2">
+      <input type="text" id="search-input" oninput="renderManifest()" placeholder="Search guest, phone, table..." class="bg-slate-900 border border-slate-800 text-xs px-3 py-1.5 rounded-md text-slate-200 focus:outline-none focus:border-amber-500 w-52">
+      <select id="status-filter" onchange="renderManifest()" class="bg-slate-900 border border-slate-800 text-xs px-2.5 py-1.5 rounded-md text-slate-300 focus:outline-none focus:border-amber-500">
+        <option value="ALL">All Statuses</option>
+        <option value="UNVERIFIED">Needs Call (Unverified)</option>
+        <option value="CONFIRMED">Confirmed</option>
+        <option value="SEATED">Seated</option>
+        <option value="ONLINE">Online Bookings</option>
+        <option value="FINISHED">Finished</option>
+        <option value="CANCELLED">Cancelled</option>
+      </select>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-4 flex-1">
+
+    <!-- TAB 1: RUN-SHEET & TRIAGE (DEFAULT) -->
+    <div id="tab-manifest" class="tab-content block space-y-4">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl overflow-hidden shadow-xl">
+        <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-900/90">
+          <div class="flex items-center space-x-2">
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide">Tonight's Service Manifest</h2>
+            <span class="text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono" id="showing-count">0 items</span>
+          </div>
+          <div class="text-xs text-slate-400 flex items-center gap-3">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Unverified (Needs Call)</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Confirmed</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Seated / Online Confirmed</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950/70 border-b border-slate-800 text-slate-400 font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-2.5 px-3">Time</th>
+                <th class="py-2.5 px-3">Table</th>
+                <th class="py-2.5 px-3">Guest Name</th>
+                <th class="py-2.5 px-2 text-center">Party</th>
+                <th class="py-2.5 px-3">Contact</th>
+                <th class="py-2.5 px-3">Dietary / Notes</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3 text-right">Triage Actions</th>
+              </tr>
+            </thead>
+            <tbody id="manifest-table-body" class="divide-y divide-slate-800/60 text-slate-300">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: FLOOR MAP & TABLE STATUS -->
+    <div id="tab-floor" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide">Live Dining Room & Patio Floor Plan</h2>
+            <p class="text-xs text-slate-400">Click any table to view current/upcoming ticket or seat a walk-in party.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-400 mr-2">Legend:</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">Seated</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">Reserved (Next 60m)</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">Available</span>
+          </div>
+        </div>
+
+        <div class="mb-6">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span>Main Dining Room (Tables 1 - 8)</span>
+            <span class="h-px bg-slate-800 flex-1"></span>
+          </h3>
+          <div id="floor-dining-room" class="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            <!-- Tables 1 to 8 rendered by JS -->
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <span>Patio & Bar High-Tops (Tables 9 - 14)</span>
+            <span class="h-px bg-slate-800 flex-1"></span>
+          </h3>
+          <div id="floor-patio" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3.5">
+            <!-- Tables 9 to 14 rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: KITCHEN PACING & TIMELINE -->
+    <div id="tab-pacing" class="tab-content hidden space-y-4">
+      <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+          <div>
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide">15-Minute Kitchen Pacing Monitor</h2>
+            <p class="text-xs text-slate-400">Prevents kitchen crashes by visualizing covers arriving per 15-minute window.</p>
+          </div>
+          <div class="text-xs bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
+            Target Throttle: <strong class="text-purple-400">Max 16 covers / 15m</strong>
+          </div>
+        </div>
+
+        <div class="mb-8">
+          <div class="text-xs font-semibold text-slate-400 mb-2">Arrival Volume (Covers per Window)</div>
+          <div id="pacing-bars-container" class="grid grid-cols-10 gap-2 items-end h-44 bg-slate-950/60 p-4 rounded-lg border border-slate-800/80">
+            <!-- Dynamic 15m slots rendered by JS -->
+          </div>
+        </div>
+
+        <div>
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Table Occupancy Timeline (5:00 PM – 10:00 PM)</h3>
+          <div class="overflow-x-auto bg-slate-950/80 rounded-lg border border-slate-800 p-3">
+            <div id="timeline-grid" class="min-w-[700px] space-y-2">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ONLINE DINER PORTAL & HOST DISPATCH -->
+    <div id="tab-online" class="tab-content hidden space-y-4">
+      
+      <!-- Operational Architecture Explainer Banner -->
+      <div class="bg-gradient-to-r from-blue-950/40 via-slate-900 to-indigo-950/40 border border-blue-800/40 rounded-xl p-4">
+        <div class="flex items-start justify-between">
+          <div>
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-400 bg-blue-900/60 px-2 py-0.5 rounded border border-blue-700/60">
+              The Online Booking Architecture
+            </span>
+            <h2 class="text-sm font-bold text-slate-200 mt-1">How Continuity Mode Solves Online Bookings Without Resy</h2>
+            <p class="text-xs text-slate-300 mt-1 max-w-4xl leading-relaxed">
+              When Resy is down, diners visiting your website or Instagram see broken booking widgets. 
+              <strong>Continuity Mode reroutes online traffic to a lightweight Emergency Booking Widget.</strong> 
+              Crucially, it <em>only exposes mathematically verified open inventory</em> and uses a 
+              <strong>Two-Way SMS Triage Handshake</strong> so the host confirms each party before a hard lock, guaranteeing 0% double-booking.
+            </p>
+          </div>
+          <button onclick="fillSampleOnlineRequest()" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition shadow-lg shadow-blue-500/20 whitespace-nowrap">
+            ⚡ Simulate Diner Request
+          </button>
+        </div>
+      </div>
+
+      <!-- Dual-Pane View: Diner Phone Mockup vs Host Dispatch Queue -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Simulated Diner Mobile Widget (5 cols) -->
+        <div class="lg:col-span-5 flex justify-center">
+          <div class="w-full max-w-sm bg-slate-900 border-2 border-slate-800 rounded-3xl p-4 shadow-2xl relative">
+            <!-- Simulated Mobile Header / Notch -->
+            <div class="w-32 h-4 bg-slate-950 rounded-full mx-auto mb-3"></div>
+            
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 text-xs space-y-3.5">
+              <!-- Simulated Browser URL Bar -->
+              <div class="bg-slate-900 px-3 py-1 rounded-md text-[10px] text-slate-400 font-mono flex items-center justify-between border border-slate-800">
+                <span class="truncate">🔒 lamibistro.com/reserve-continuity</span>
+                <span class="text-emerald-400 font-bold">ONLINE</span>
+              </div>
+
+              <div class="text-center pt-1 pb-1 border-b border-slate-900">
+                <h3 class="font-bold text-slate-100 text-sm">L'Ami Bistro</h3>
+                <p class="text-[11px] text-amber-400 font-medium">⚡ Emergency Booking Portal (Resy Outage Fallback)</p>
+                <p class="text-[10px] text-slate-400">Direct host confirmation in under 3 minutes.</p>
+              </div>
+
+              <!-- Form Controls -->
+              <div>
+                <label class="block text-slate-400 text-[11px] mb-1 font-semibold">1. Party Size</label>
+                <div class="grid grid-cols-4 gap-1.5 text-center font-bold">
+                  <button type="button" onclick="selectOnlineParty(2)" id="party-btn-2" class="online-party-btn bg-amber-500 text-slate-950 py-1.5 rounded border border-amber-400 text-xs">2p</button>
+                  <button type="button" onclick="selectOnlineParty(4)" id="party-btn-4" class="online-party-btn bg-slate-900 text-slate-300 py-1.5 rounded border border-slate-800 text-xs hover:border-slate-700">4p</button>
+                  <button type="button" onclick="selectOnlineParty(6)" id="party-btn-6" class="online-party-btn bg-slate-900 text-slate-300 py-1.5 rounded border border-slate-800 text-xs hover:border-slate-700">6p</button>
+                  <button type="button" onclick="selectOnlineParty(8)" id="party-btn-8" class="online-party-btn bg-slate-900 text-slate-300 py-1.5 rounded border border-slate-800 text-xs hover:border-slate-700">Bar</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-slate-400 text-[11px] mb-1 font-semibold">2. Certified Safe Slots (Tonight)</label>
+                <div id="online-slots-container" class="grid grid-cols-3 gap-1.5 text-center font-mono text-[11px]">
+                  <!-- Populated dynamically based on open capacity -->
+                </div>
+                <p class="text-[10px] text-slate-500 mt-1 italic">*Prime 6:30-7:30 PM is booked to protect kitchen pacing.</p>
+              </div>
+
+              <div class="space-y-2">
+                <div>
+                  <label class="block text-slate-400 text-[11px] mb-0.5">Your Full Name</label>
+                  <input type="text" id="online-guest-name" placeholder="e.g. Alex Morgan" class="w-full bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                  <label class="block text-slate-400 text-[11px] mb-0.5">Mobile Phone (for instant SMS pass)</label>
+                  <input type="tel" id="online-guest-phone" placeholder="e.g. (646) 555-4921" class="w-full bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                  <label class="block text-slate-400 text-[11px] mb-0.5">Special Requests / Occasion</label>
+                  <input type="text" id="online-guest-notes" placeholder="e.g. Anniversary dinner" class="w-full bg-slate-900 border border-slate-800 px-2.5 py-1.5 rounded text-slate-200 text-xs focus:outline-none focus:border-amber-500">
+                </div>
+              </div>
+
+              <button onclick="submitOnlineRequest()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5">
+                <span>Request Reservation</span>
+                <span class="text-[10px] font-mono">→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Host Stand Dispatch & SMS Log (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          
+          <!-- Inbound Triage Queue -->
+          <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-4 shadow-xl">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h3 class="text-sm font-bold text-slate-200 uppercase tracking-wide">Live Inbound Online Requests</h3>
+              </div>
+              <span id="queue-count-badge" class="text-xs bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded-full border border-slate-700">0 Pending</span>
+            </div>
+
+            <!-- Request Cards List -->
+            <div id="online-queue-container" class="py-3 space-y-3">
+              <div class="text-center py-6 text-slate-500 italic text-xs">
+                No pending online requests. Click "Simulate Diner Request" above or submit via the phone widget!
+              </div>
+            </div>
+          </div>
+
+          <!-- SMS Notification Terminal Log -->
+          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-4 shadow-xl font-mono text-xs">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800/80 mb-2">
+              <span class="text-slate-400 text-[11px] uppercase tracking-wider font-semibold">Automated Twilio SMS Gateway (Simulated)</span>
+              <span class="text-[10px] text-emerald-400 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Active Dispatch
+              </span>
+            </div>
+            <div id="sms-log-container" class="space-y-1.5 max-h-36 overflow-y-auto text-[11px] text-slate-400">
+              <div class="text-slate-600">[System Ready]: SMS dispatch ready for online diner confirmations.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 5: DATA INGESTION & RECOVERY -->
+    <div id="tab-ingest" class="tab-content hidden space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide">Paste Resy Daily Shift Email</h2>
+            <button onclick="loadSampleDigest()" class="text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 px-2.5 py-1 rounded transition">
+              Load Sample 2:00 PM Email
+            </button>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">
+            Paste raw text from the automated Resy Shift Digest email sent daily to managers, or drop an exported CSV/text log.
+          </p>
+          <textarea id="raw-digest-input" rows="12" class="w-full bg-slate-950 border border-slate-800 text-xs font-mono p-3 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500" placeholder="Paste Resy Shift Digest email text here..."></textarea>
+          
+          <div class="mt-4 flex items-center justify-between">
+            <button onclick="parseDigestInput()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+              Parse & Reconstruct Book
+            </button>
+            <button onclick="resetToInitialState()" class="text-xs text-slate-500 hover:text-red-400 transition">
+              Reset All Data
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-5 shadow-xl flex flex-col justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide mb-3">Data Integrity & Source Audit</h2>
+            <p class="text-xs text-slate-400 mb-4">
+              How Continuity Mode triangulates and recovers ground truth when platform APIs are dark:
+            </p>
+
+            <div class="space-y-3">
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                  <span>1. Resy Shift Digest (2:00 PM)</span>
+                  <span class="text-emerald-400 font-mono text-[11px]">Primary Source</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Captures ~85% of dinner bookings, party sizes, VIP flags, and table pre-assignments.</p>
+              </div>
+
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                  <span>2. Staff Verification Calls</span>
+                  <span class="text-blue-400 font-mono text-[11px]">Active Triage</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Host calls parties to confirm arrival time and lock their slot, filtering out no-shows.</p>
+              </div>
+
+              <div class="bg-slate-950 p-3 rounded-lg border border-slate-800/80">
+                <div class="flex items-center justify-between text-xs font-semibold text-slate-300 mb-1">
+                  <span>3. Gated Online Widget + SMS Triage</span>
+                  <span class="text-purple-400 font-mono text-[11px]">Digital Inbound</span>
+                </div>
+                <p class="text-[11px] text-slate-400">Captures last-minute online demand without risking unpaced bookings or double-booking.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3 bg-amber-950/20 border border-amber-800/50 rounded-lg text-xs text-amber-300">
+            <strong>Post-Service Reconciliation:</strong> Tonight's offline logs are saved locally in browser localStorage. When Resy returns, export the reconciled CSV for shift settlement.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: SEAT WALKIN -->
+  <div id="walkin-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-xl p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div>
+          <h3 class="text-sm font-bold text-slate-100 uppercase tracking-wide">Seat Walk-In Party</h3>
+          <p class="text-xs text-slate-400">Instant conflict check against existing bookings</p>
+        </div>
+        <button onclick="closeWalkinModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Guest Name / Identifier</label>
+          <input type="text" id="walkin-name" placeholder="e.g. Walk-in Smith" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Party Size</label>
+            <select id="walkin-party" onchange="evaluateAvailableTables()" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+              <option value="2">2 Guests</option>
+              <option value="3">3 Guests</option>
+              <option value="4">4 Guests</option>
+              <option value="5">5 Guests</option>
+              <option value="6">6 Guests</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Seating Time</label>
+            <select id="walkin-time" onchange="evaluateAvailableTables()" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+              <option value="17:45">05:45 PM (Now)</option>
+              <option value="18:00">06:00 PM</option>
+              <option value="18:30">06:30 PM</option>
+              <option value="19:00">07:00 PM</option>
+              <option value="19:30">07:30 PM</option>
+              <option value="20:00">08:00 PM</option>
+              <option value="20:30">08:30 PM</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Calculated Safe Turn-Time</label>
+          <div class="bg-slate-950 border border-slate-800 p-2.5 rounded text-slate-300 text-[11px] flex justify-between items-center">
+            <span id="turn-time-display">90 minutes (2-top standard)</span>
+            <span class="text-purple-400 font-mono font-semibold">+15m kitchen buffer</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Available Safe Tables</label>
+          <select id="walkin-table-select" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+          </select>
+          <p id="walkin-conflict-warning" class="text-[11px] text-red-400 mt-1 hidden"></p>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Notes / Phone</label>
+          <input type="text" id="walkin-notes" placeholder="e.g. Phone or bar holding" class="w-full bg-slate-950 border border-slate-800 px-3 py-2 rounded text-slate-200 focus:outline-none focus:border-amber-500">
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end gap-2">
+        <button onclick="closeWalkinModal()" class="px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white">Cancel</button>
+        <button onclick="confirmSeatWalkin()" id="confirm-seat-btn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-1.5 rounded text-xs transition">
+          Confirm Seating
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: TABLE DETAIL & GUEST INSPECTION -->
+  <div id="table-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <div class="bg-slate-900 border border-slate-800 w-full max-w-md rounded-xl p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <h3 id="modal-table-title" class="text-sm font-bold text-slate-100 uppercase tracking-wide">Table Details</h3>
+        <button onclick="closeTableModal()" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+      <div id="modal-table-content" class="text-xs space-y-3">
+      </div>
+    </div>
+  </div>
+
+  <!-- PRINT-ONLY EMERGENCY RUN-SHEET -->
+  <div class="print-only p-6">
+    <div style="margin-bottom: 20px;">
+      <h1 style="font-size: 20px; font-weight: bold; margin: 0;">L'Ami Bistro — Emergency Service Manifest</h1>
+      <p style="font-size: 12px; margin: 4px 0 0 0;">Generated by Resy Continuity Mode | Date: Friday Dinner | Printed: 5:45 PM</p>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+      <thead>
+        <tr>
+          <th style="width: 10%;">Time</th>
+          <th style="width: 8%;">Table</th>
+          <th style="width: 24%;">Guest Name</th>
+          <th style="width: 6%;">Party</th>
+          <th style="width: 18%;">Phone</th>
+          <th style="width: 24%;">Dietary & Notes</th>
+          <th style="width: 10%;">Status</th>
+        </tr>
+      </thead>
+      <tbody id="print-manifest-body">
+      </tbody>
+    </table>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-4 right-4 bg-slate-900 border border-amber-500/50 text-amber-300 text-xs px-4 py-2.5 rounded-lg shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2 pointer-events-none">
+    <span id="toast-message">Notification</span>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // 14 TABLES CONFIGURATION
+    const TABLES = [
+      { id: 'T1', name: 'Table 1', capacity: 2, section: 'dining' },
+      { id: 'T2', name: 'Table 2', capacity: 2, section: 'dining' },
+      { id: 'T3', name: 'Table 3', capacity: 4, section: 'dining' },
+      { id: 'T4', name: 'Table 4', capacity: 4, section: 'dining' },
+      { id: 'T5', name: 'Table 5', capacity: 4, section: 'dining' },
+      { id: 'T6', name: 'Table 6', capacity: 6, section: 'dining' },
+      { id: 'T7', name: 'Table 7', capacity: 2, section: 'dining' },
+      { id: 'T8', name: 'Table 8', capacity: 4, section: 'dining' },
+      { id: 'T9', name: 'Table 9 (Patio)', capacity: 2, section: 'patio' },
+      { id: 'T10', name: 'Table 10 (Patio)', capacity: 2, section: 'patio' },
+      { id: 'T11', name: 'Table 11 (Patio)', capacity: 4, section: 'patio' },
+      { id: 'T12', name: 'Table 12 (Patio)', capacity: 4, section: 'patio' },
+      { id: 'T13', name: 'High-Top 13', capacity: 2, section: 'patio' },
+      { id: 'T14', name: 'High-Top 14', capacity: 2, section: 'patio' },
+    ];
+
+    // INITIAL SEED DATA RECONSTRUCTED FROM 2:00 PM DIGEST
+    const INITIAL_RESERVATIONS = [
+      { id: 'R1', time: '17:30', table: 'T1', name: 'Sarah Jenkins', party: 2, phone: '(212) 555-0192', notes: 'Anniversary, booth preferred', status: 'SEATED' },
+      { id: 'R2', time: '17:30', table: 'T3', name: 'Marcus Chen', party: 4, phone: '(917) 555-8831', notes: 'Nut allergy (severe)', status: 'SEATED' },
+      { id: 'R3', time: '17:45', table: 'T9', name: 'Emily & David', party: 2, phone: '(646) 555-3211', notes: 'Regulars, wine enthusiasts', status: 'CONFIRMED' },
+      { id: 'R4', time: '18:00', table: 'T4', name: 'Robert Vance (Vance Lux)', party: 4, phone: '(212) 555-4492', notes: 'VIP Guest of Owner', status: 'CONFIRMED' },
+      { id: 'R5', time: '18:00', table: 'T7', name: 'Hannah Wright', party: 2, phone: '(917) 555-9012', notes: 'Birthday dessert', status: 'UNVERIFIED' },
+      { id: 'R6', time: '18:15', table: 'T2', name: 'Alex Rivera', party: 2, phone: '(718) 555-2384', notes: 'Window seat if available', status: 'CONFIRMED' },
+      { id: 'R7', time: '18:30', table: 'T6', name: 'O\'Connor Family', party: 6, phone: '(212) 555-7740', notes: 'High chair needed for 1', status: 'CONFIRMED' },
+      { id: 'R8', time: '18:30', table: 'T5', name: 'Dr. Katherine Bell', party: 4, phone: '(646) 555-9923', notes: 'Quiet corner requested', status: 'UNVERIFIED' },
+      { id: 'R9', time: '18:45', table: 'T11', name: 'Liam & Olivia', party: 4, phone: '(917) 555-4421', notes: 'First time guests', status: 'UNVERIFIED' },
+      { id: 'R10', time: '19:00', table: 'T8', name: 'Jonathan Pierce', party: 4, phone: '(212) 555-1158', notes: 'Gluten-free menu required', status: 'CONFIRMED' },
+      { id: 'R11', time: '19:15', table: 'T1', name: 'Jessica Taylor', party: 2, phone: '(718) 555-3819', notes: 'Second seating turn', status: 'CONFIRMED' },
+      { id: 'R12', time: '19:30', table: 'T2', name: 'Carlos Mendez', party: 2, phone: '(646) 555-9081', notes: 'Quick turnaround needed', status: 'UNVERIFIED' },
+      { id: 'R13', time: '19:45', table: 'T3', name: 'Goldman Sachs Group', party: 4, phone: '(212) 555-6677', notes: 'Corporate dining', status: 'CONFIRMED' },
+      { id: 'R14', time: '20:00', table: 'T4', name: 'Sophia Miller', party: 4, phone: '(917) 555-7288', notes: 'Pescetarian only', status: 'UNVERIFIED' },
+      { id: 'R15', time: '20:15', table: 'T12', name: 'Daniel Kim', party: 4, phone: '(212) 555-8930', notes: 'Patio heated area', status: 'CONFIRMED' },
+      { id: 'R16', time: '20:30', table: 'T6', name: 'Rachel Green', party: 6, phone: '(646) 555-2234', notes: 'Celebration dinner', status: 'UNVERIFIED' },
+    ];
+
+    const SAMPLE_RAW_EMAIL = `Subject: Resy Shift Digest - L'Ami Bistro - Friday Dinner (Oct 07)
+Sent: Friday, October 07, 2:00 PM
+From: reports@resy.com
+
+--- SHIFT RECAP: 16 CONFIRMED BOOKINGS (58 COVERS) ---
+17:30 | Table 1 | Sarah Jenkins | 2 guests | (212) 555-0192 | Notes: Anniversary, booth preferred
+17:30 | Table 3 | Marcus Chen | 4 guests | (917) 555-8831 | Notes: Nut allergy (severe)
+17:45 | Table 9 | Emily & David | 2 guests | (646) 555-3211 | Notes: Regulars, wine enthusiasts
+18:00 | Table 4 | Robert Vance (Vance Lux) | 4 guests | (212) 555-4492 | Notes: VIP Guest of Owner
+18:00 | Table 7 | Hannah Wright | 2 guests | (917) 555-9012 | Notes: Birthday dessert
+18:15 | Table 2 | Alex Rivera | 2 guests | (718) 555-2384 | Notes: Window seat if available
+18:30 | Table 6 | O'Connor Family | 6 guests | (212) 555-7740 | Notes: High chair needed for 1
+18:30 | Table 5 | Dr. Katherine Bell | 4 guests | (646) 555-9923 | Notes: Quiet corner requested
+18:45 | Table 11 | Liam & Olivia | 4 guests | (917) 555-4421 | Notes: First time guests
+19:00 | Table 8 | Jonathan Pierce | 4 guests | (212) 555-1158 | Notes: Gluten-free menu required
+19:15 | Table 1 | Jessica Taylor | 2 guests | (718) 555-3819 | Notes: Second seating turn
+19:30 | Table 2 | Carlos Mendez | 2 guests | (646) 555-9081 | Notes: Quick turnaround needed
+19:45 | Table 3 | Goldman Sachs Group | 4 guests | (212) 555-6677 | Notes: Corporate dining
+20:00 | Table 4 | Sophia Miller | 4 guests | (917) 555-7288 | Notes: Pescetarian only
+20:15 | Table 12 | Daniel Kim | 4 guests | (212) 555-8930 | Notes: Patio heated area
+20:30 | Table 6 | Rachel Green | 6 guests | (646) 555-2234 | Notes: Celebration dinner`;
+
+    // APP STATE
+    let reservations = JSON.parse(localStorage.getItem('resy_continuity_bookings')) || INITIAL_RESERVATIONS;
+    let onlineQueue = JSON.parse(localStorage.getItem('resy_online_queue')) || [];
+    let selectedOnlinePartySize = 2;
+    let selectedOnlineSlot = '20:15';
+
+    function saveState() {
+      localStorage.setItem('resy_continuity_bookings', JSON.stringify(reservations));
+      localStorage.setItem('resy_online_queue', JSON.stringify(onlineQueue));
+      updateMetrics();
+      renderManifest();
+      renderFloor();
+      renderPacing();
+      renderOnlineQueue();
+      updateCertifiedOnlineSlots();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-message');
+      text.textContent = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2600);
+    }
+
+    function logSMS(recipient, message) {
+      const log = document.getElementById('sms-log-container');
+      const item = document.createElement('div');
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      item.innerHTML = `<span class="text-amber-400">[${time} - Twilio SMS]</span> → <strong>${recipient}</strong>: "${message}"`;
+      log.prepend(item);
+    }
+
+    // TAB SWITCHER
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-slate-800', 'text-white', 'shadow-sm');
+        btn.classList.add('text-slate-400');
+      });
+
+      const activeContent = document.getElementById('tab-' + tabId);
+      const activeBtn = document.getElementById('tab-btn-' + tabId);
+      if (activeContent) activeContent.classList.remove('hidden');
+      if (activeBtn) {
+        activeBtn.classList.add('bg-slate-800', 'text-white', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      const filterBar = document.getElementById('manifest-filters');
+      if (filterBar) {
+        filterBar.style.display = (tabId === 'manifest') ? 'flex' : 'none';
+      }
+
+      if (tabId === 'floor') renderFloor();
+      if (tabId === 'pacing') renderPacing();
+      if (tabId === 'online') {
+        renderOnlineQueue();
+        updateCertifiedOnlineSlots();
+      }
+    }
+
+    // UPDATE METRICS STRIP
+    function updateMetrics() {
+      const activeBookings = reservations.filter(r => r.status !== 'CANCELLED');
+      const totalCovers = activeBookings.reduce((sum, r) => sum + Number(r.party), 0);
+      const verified = activeBookings.filter(r => r.status === 'CONFIRMED' || r.status === 'SEATED').length;
+      const unverified = activeBookings.filter(r => r.status === 'UNVERIFIED').length;
+
+      document.getElementById('stat-total-res').textContent = activeBookings.length;
+      document.getElementById('stat-total-covers').textContent = totalCovers;
+      document.getElementById('stat-verified').textContent = verified;
+      document.getElementById('stat-unverified').textContent = unverified;
+      document.getElementById('stat-online-queue').textContent = onlineQueue.length;
+      
+      const badge = document.getElementById('queue-count-badge');
+      if (badge) badge.textContent = `${onlineQueue.length} Pending`;
+    }
+
+    // RENDER MANIFEST TABLE
+    function renderManifest() {
+      const tbody = document.getElementById('manifest-table-body');
+      const printBody = document.getElementById('print-manifest-body');
+      const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+      const statusFilter = document.getElementById('status-filter')?.value || 'ALL';
+
+      tbody.innerHTML = '';
+      if (printBody) printBody.innerHTML = '';
+
+      let filtered = reservations.filter(r => {
+        const matchesSearch = r.name.toLowerCase().includes(searchTerm) || 
+                              r.phone.toLowerCase().includes(searchTerm) || 
+                              r.table.toLowerCase().includes(searchTerm) ||
+                              r.notes.toLowerCase().includes(searchTerm);
+        let matchesStatus = true;
+        if (statusFilter === 'ALL') {
+          matchesStatus = true;
+        } else if (statusFilter === 'ONLINE') {
+          matchesStatus = r.notes.includes('Online Portal');
+        } else {
+          matchesStatus = (r.status === statusFilter);
+        }
+        return matchesSearch && matchesStatus;
+      });
+
+      filtered.sort((a, b) => a.time.localeCompare(b.time));
+      document.getElementById('showing-count').textContent = `${filtered.length} of ${reservations.length} bookings`;
+
+      filtered.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-slate-800/40 transition ${r.status === 'SEATED' ? 'bg-emerald-950/20' : ''}`;
+
+        let statusBadge = '';
+        if (r.status === 'SEATED') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-800">SEATED</span>';
+        } else if (r.status === 'CONFIRMED') {
+          const isOnline = r.notes.includes('Online');
+          statusBadge = isOnline 
+            ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-950 text-indigo-300 border border-indigo-800 flex items-center gap-1 w-max">🌐 ONLINE CONFIRMED</span>'
+            : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-950 text-blue-300 border border-blue-800">CONFIRMED</span>';
+        } else if (r.status === 'UNVERIFIED') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-800 animate-pulse">CALL NEEDED</span>';
+        } else if (r.status === 'CANCELLED') {
+          statusBadge = '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-500 line-through">CANCELLED</span>';
+        }
+
+        tr.innerHTML = `
+          <td class="py-3 px-3 font-mono font-bold text-amber-400 text-xs">${r.time}</td>
+          <td class="py-3 px-3 font-semibold text-slate-200">${r.table}</td>
+          <td class="py-3 px-3 font-medium text-slate-100">${r.name}</td>
+          <td class="py-3 px-2 text-center font-mono font-semibold">${r.party}p</td>
+          <td class="py-3 px-3 font-mono text-slate-400">
+            <a href="tel:${r.phone}" class="hover:text-amber-400 underline decoration-slate-700">${r.phone}</a>
+          </td>
+          <td class="py-3 px-3 text-slate-400 max-w-xs truncate" title="${r.notes}">${r.notes || '—'}</td>
+          <td class="py-3 px-3">${statusBadge}</td>
+          <td class="py-3 px-3 text-right space-x-1.5 whitespace-nowrap">
+            ${r.status === 'UNVERIFIED' ? `
+              <button onclick="updateResStatus('${r.id}', 'CONFIRMED')" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-[11px] font-semibold transition">
+                ✓ Confirm
+              </button>
+            ` : ''}
+            ${r.status !== 'SEATED' && r.status !== 'CANCELLED' ? `
+              <button onclick="updateResStatus('${r.id}', 'SEATED')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded text-[11px] font-semibold transition">
+                Seat
+              </button>
+            ` : ''}
+            ${r.status === 'SEATED' ? `
+              <button onclick="updateResStatus('${r.id}', 'FINISHED')" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded text-[11px] transition">
+                Clear
+              </button>
+            ` : ''}
+            ${r.status !== 'CANCELLED' ? `
+              <button onclick="updateResStatus('${r.id}', 'CANCELLED')" class="text-slate-500 hover:text-red-400 px-1 py-1 text-[11px] transition">
+                ✕
+              </button>
+            ` : ''}
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        if (printBody && r.status !== 'CANCELLED') {
+          const printTr = document.createElement('tr');
+          printTr.innerHTML = `
+            <td>${r.time}</td>
+            <td>${r.table}</td>
+            <td><strong>${r.name}</strong></td>
+            <td style="text-align:center;">${r.party}</td>
+            <td>${r.phone}</td>
+            <td>${r.notes || ''}</td>
+            <td>${r.status}</td>
+          `;
+          printBody.appendChild(printTr);
+        }
+      });
+    }
+
+    function updateResStatus(id, newStatus) {
+      const res = reservations.find(r => r.id === id);
+      if (res) {
+        res.status = newStatus;
+        saveState();
+        showToast(`Updated ${res.name} to ${newStatus}`);
+      }
+    }
+
+    // RENDER FLOOR MAP
+    function renderFloor() {
+      const diningContainer = document.getElementById('floor-dining-room');
+      const patioContainer = document.getElementById('floor-patio');
+      diningContainer.innerHTML = '';
+      patioContainer.innerHTML = '';
+
+      TABLES.forEach(table => {
+        const tableReservations = reservations.filter(r => r.table === table.id && r.status !== 'CANCELLED');
+        const seatedRes = tableReservations.find(r => r.status === 'SEATED');
+        const upcomingRes = tableReservations.find(r => r.time >= '17:30' && r.time <= '18:45' && r.status !== 'SEATED');
+
+        let cardBg = 'bg-slate-900 border-slate-800 hover:border-slate-700';
+        let statusText = 'Available';
+        let statusColor = 'text-slate-400';
+        let occupantDetails = 'Empty table';
+
+        if (seatedRes) {
+          cardBg = 'bg-emerald-950/40 border-emerald-700/80 hover:border-emerald-500';
+          statusText = 'SEATED';
+          statusColor = 'text-emerald-400 font-bold';
+          occupantDetails = `${seatedRes.name} (${seatedRes.party}p) @ ${seatedRes.time}`;
+        } else if (upcomingRes) {
+          cardBg = 'bg-blue-950/40 border-blue-700/80 hover:border-blue-500';
+          statusText = upcomingRes.status === 'CONFIRMED' ? 'RESERVED' : 'UNVERIFIED';
+          statusColor = upcomingRes.status === 'CONFIRMED' ? 'text-blue-400 font-bold' : 'text-amber-400 font-bold';
+          occupantDetails = `${upcomingRes.name} (${upcomingRes.party}p) @ ${upcomingRes.time}`;
+        }
+
+        const card = document.createElement('div');
+        card.className = `${cardBg} border rounded-xl p-3 cursor-pointer transition shadow-md flex flex-col justify-between h-28`;
+        card.onclick = () => openTableModal(table.id);
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <span class="font-bold text-slate-100 text-sm">${table.name}</span>
+            <span class="text-[10px] bg-slate-950 px-2 py-0.5 rounded text-slate-300 font-mono">${table.capacity} Top</span>
+          </div>
+          <div class="my-auto">
+            <div class="text-[10px] uppercase tracking-wider ${statusColor}">${statusText}</div>
+            <div class="text-xs text-slate-300 truncate font-medium mt-0.5">${occupantDetails}</div>
+          </div>
+          <div class="text-[10px] text-slate-500 flex justify-between items-center border-t border-slate-800/60 pt-1">
+            <span>${tableReservations.length} total turns</span>
+            <span class="text-amber-400 font-semibold">View →</span>
+          </div>
+        `;
+
+        if (table.section === 'dining') {
+          diningContainer.appendChild(card);
+        } else {
+          patioContainer.appendChild(card);
+        }
+      });
+    }
+
+    // RENDER KITCHEN PACING & TIMELINE
+    function renderPacing() {
+      const barsContainer = document.getElementById('pacing-bars-container');
+      const timelineGrid = document.getElementById('timeline-grid');
+      barsContainer.innerHTML = '';
+      timelineGrid.innerHTML = '';
+
+      const timeWindows = [
+        '17:30', '17:45', '18:00', '18:15', '18:30', 
+        '18:45', '19:00', '19:15', '19:30', '19:45', 
+        '20:00', '20:15', '20:30', '20:45'
+      ];
+
+      const MAX_SAFE_COVERS = 16;
+      timeWindows.slice(0, 10).forEach(t => {
+        const coversInSlot = reservations
+          .filter(r => r.time === t && r.status !== 'CANCELLED')
+          .reduce((sum, r) => sum + Number(r.party), 0);
+
+        const heightPct = Math.min(100, Math.round((coversInSlot / 20) * 100));
+        const isOver = coversInSlot > MAX_SAFE_COVERS;
+
+        const col = document.createElement('div');
+        col.className = 'flex flex-col items-center h-full justify-end group relative';
+        col.innerHTML = `
+          <div class="text-[10px] font-mono text-slate-400 mb-1 group-hover:text-amber-400 transition">${coversInSlot}p</div>
+          <div class="w-full ${isOver ? 'bg-red-500' : 'bg-purple-600'} rounded-t transition-all duration-300 group-hover:brightness-125" style="height: ${Math.max(8, heightPct)}%;"></div>
+          <div class="text-[10px] font-mono text-slate-400 mt-2 rotate-45 md:rotate-0">${t}</div>
+        `;
+        barsContainer.appendChild(col);
+      });
+
+      TABLES.slice(0, 8).forEach(table => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center text-xs py-1 border-b border-slate-900';
+
+        const tableRes = reservations.filter(r => r.table === table.id && r.status !== 'CANCELLED');
+        let slotsHtml = '';
+
+        timeWindows.slice(0, 10).forEach(slotTime => {
+          const match = tableRes.find(r => r.time === slotTime);
+          if (match) {
+            slotsHtml += `
+              <div class="flex-1 bg-amber-500/20 border border-amber-500/50 text-amber-300 rounded px-1.5 py-1 text-[10px] truncate mx-0.5 font-medium" title="${match.name} (${match.party}p)">
+                ${match.name.split(' ')[0]} (${match.party}p)
+              </div>
+            `;
+          } else {
+            slotsHtml += `<div class="flex-1 bg-slate-900/50 border border-slate-800/40 rounded h-7 mx-0.5"></div>`;
+          }
+        });
+
+        row.innerHTML = `
+          <div class="w-24 font-bold text-slate-300">${table.name}</div>
+          <div class="flex-1 flex">${slotsHtml}</div>
+        `;
+        timelineGrid.appendChild(row);
+      });
+    }
+
+    // ==========================================
+    // ONLINE BOOKING PORTAL LOGIC
+    // ==========================================
+    function selectOnlineParty(size) {
+      selectedOnlinePartySize = size;
+      document.querySelectorAll('.online-party-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400');
+        btn.classList.add('bg-slate-900', 'text-slate-300', 'border-slate-800');
+      });
+      const activeBtn = document.getElementById('party-btn-' + size);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400');
+        activeBtn.classList.remove('bg-slate-900', 'text-slate-300', 'border-slate-800');
+      }
+      updateCertifiedOnlineSlots();
+    }
+
+    function selectOnlineSlot(time) {
+      selectedOnlineSlot = time;
+      document.querySelectorAll('.online-slot-btn').forEach(b => {
+        b.classList.remove('bg-amber-500', 'text-slate-950', 'font-bold', 'border-amber-400');
+        b.classList.add('bg-slate-900', 'text-slate-300');
+      });
+      const active = document.getElementById('slot-btn-' + time.replace(':', ''));
+      if (active) {
+        active.classList.add('bg-amber-500', 'text-slate-950', 'font-bold', 'border-amber-400');
+        active.classList.remove('bg-slate-900', 'text-slate-300');
+      }
+    }
+
+    function updateCertifiedOnlineSlots() {
+      const container = document.getElementById('online-slots-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      // Only show slots that have available capacity and kitchen buffer
+      const candidateSlots = ['17:45', '18:15', '19:00', '19:45', '20:15', '20:45'];
+      
+      candidateSlots.forEach(t => {
+        // Evaluate covers currently booked in this slot
+        const coversInSlot = reservations
+          .filter(r => r.time === t && r.status !== 'CANCELLED')
+          .reduce((sum, r) => sum + Number(r.party), 0);
+
+        const isSafe = (coversInSlot + selectedOnlinePartySize) <= 16;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = 'slot-btn-' + t.replace(':', '');
+        btn.onclick = () => isSafe && selectOnlineSlot(t);
+
+        if (isSafe) {
+          const isSelected = (t === selectedOnlineSlot);
+          btn.className = `online-slot-btn py-1.5 rounded border border-slate-800 transition ${isSelected ? 'bg-amber-500 text-slate-950 font-bold border-amber-400' : 'bg-slate-900 text-slate-200 hover:border-slate-700'}`;
+          btn.innerHTML = `${t} <span class="text-[9px] block text-emerald-400">Available</span>`;
+        } else {
+          btn.className = 'py-1.5 rounded border border-slate-900 bg-slate-950 text-slate-600 cursor-not-allowed opacity-50';
+          btn.innerHTML = `${t} <span class="text-[9px] block text-red-500">Waitlist</span>`;
+          btn.disabled = true;
+        }
+
+        container.appendChild(btn);
+      });
+    }
+
+    function fillSampleOnlineRequest() {
+      switchTab('online');
+      selectOnlineParty(2);
+      selectOnlineSlot('20:15');
+      document.getElementById('online-guest-name').value = 'Alex Morgan';
+      document.getElementById('online-guest-phone').value = '(646) 555-4921';
+      document.getElementById('online-guest-notes').value = 'Anniversary dinner; quiet table requested';
+      showToast('Pre-filled sample diner booking request!');
+    }
+
+    function submitOnlineRequest() {
+      const name = document.getElementById('online-guest-name').value.trim();
+      const phone = document.getElementById('online-guest-phone').value.trim();
+      const notes = document.getElementById('online-guest-notes').value.trim();
+
+      if (!name || !phone) {
+        alert('Please provide your name and phone number for SMS confirmation.');
+        return;
+      }
+
+      const newReq = {
+        id: 'REQ_' + Date.now(),
+        name: name,
+        phone: phone,
+        party: selectedOnlinePartySize,
+        time: selectedOnlineSlot,
+        notes: notes || 'Online Portal Request',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      onlineQueue.push(newReq);
+      saveState();
+
+      // Clear inputs
+      document.getElementById('online-guest-name').value = '';
+      document.getElementById('online-guest-phone').value = '';
+      document.getElementById('online-guest-notes').value = '';
+
+      showToast(`Request submitted! Inbound notification sent to Host Stand.`);
+      logSMS(newReq.phone, `L'Ami Bistro: We received your request for ${newReq.party} guests @ ${newReq.time}. Our host is locking your table now...`);
+    }
+
+    function renderOnlineQueue() {
+      const container = document.getElementById('online-queue-container');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (onlineQueue.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-6 text-slate-500 italic text-xs">
+            No pending online requests. Click "Simulate Diner Request" above or submit via the phone widget!
+          </div>
+        `;
+        return;
+      }
+
+      onlineQueue.forEach(req => {
+        // Auto-match best safe table
+        const compatibleTables = TABLES.filter(t => t.capacity >= req.party);
+        let suggestedTable = null;
+
+        for (const t of compatibleTables) {
+          const conflict = reservations.find(r => r.table === t.id && r.time === req.time && r.status !== 'CANCELLED');
+          if (!conflict) {
+            suggestedTable = t;
+            break;
+          }
+        }
+
+        const card = document.createElement('div');
+        card.className = 'bg-slate-950 border border-slate-800 p-3.5 rounded-xl space-y-2.5 shadow-md';
+        card.innerHTML = `
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold text-slate-100">${req.name}</span>
+                <span class="text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-amber-400 font-mono font-bold">${req.party} Guests @ ${req.time}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 font-mono mt-0.5">${req.phone} • ${req.notes}</div>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono">Rec'd ${req.timestamp}</span>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 p-2 rounded text-[11px] flex items-center justify-between">
+            <span class="text-slate-300">
+              Smart Assignment: <strong class="text-emerald-400">${suggestedTable ? suggestedTable.name : 'Table 9 (Patio)'}</strong>
+            </span>
+            <span class="text-[10px] text-purple-400 font-mono">Pacing Safe (<16 covers)</span>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-1">
+            <button onclick="rejectOnlineRequest('${req.id}')" class="text-slate-400 hover:text-red-400 px-2.5 py-1 rounded text-xs transition">
+              Decline
+            </button>
+            <button onclick="approveOnlineRequest('${req.id}', '${suggestedTable ? suggestedTable.id : 'T9'}')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1 rounded text-xs transition flex items-center gap-1 shadow-lg shadow-emerald-600/20">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              One-Tap Approve & Send SMS Pass
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function approveOnlineRequest(reqId, tableId) {
+      const idx = onlineQueue.findIndex(r => r.id === reqId);
+      if (idx === -1) return;
+      const req = onlineQueue[idx];
+
+      const newBooking = {
+        id: 'ONL_' + Date.now(),
+        time: req.time,
+        table: tableId,
+        name: req.name,
+        party: req.party,
+        phone: req.phone,
+        notes: `[Online Portal] ${req.notes}`,
+        status: 'CONFIRMED'
+      };
+
+      reservations.push(newBooking);
+      onlineQueue.splice(idx, 1);
+      saveState();
+
+      showToast(`Confirmed ${req.name} at ${tableId}! SMS pass dispatched.`);
+      logSMS(req.phone, `L'Ami Bistro CONFIRMED: Table reserved for ${req.party} @ ${req.time} tonight! Show this SMS to host upon arrival.`);
+    }
+
+    function rejectOnlineRequest(reqId) {
+      const idx = onlineQueue.findIndex(r => r.id === reqId);
+      if (idx === -1) return;
+      const req = onlineQueue[idx];
+      onlineQueue.splice(idx, 1);
+      saveState();
+      showToast(`Declined request for ${req.name}`);
+      logSMS(req.phone, `L'Ami Bistro: We apologize, but we are at full kitchen capacity for ${req.time} due to system outages. We recommend walk-in seating at the bar.`);
+    }
+
+    // WALKIN MODAL LOGIC
+    function openWalkinModal() {
+      document.getElementById('walkin-modal').classList.remove('hidden');
+      evaluateAvailableTables();
+    }
+
+    function closeWalkinModal() {
+      document.getElementById('walkin-modal').classList.add('hidden');
+    }
+
+    function evaluateAvailableTables() {
+      const party = Number(document.getElementById('walkin-party').value);
+      const time = document.getElementById('walkin-time').value;
+      const turnMinutes = party <= 2 ? 90 : 120;
+      document.getElementById('turn-time-display').textContent = `${turnMinutes} minutes (${party}-guest turn)`;
+
+      const select = document.getElementById('walkin-table-select');
+      const warning = document.getElementById('walkin-conflict-warning');
+      const confirmBtn = document.getElementById('confirm-seat-btn');
+      select.innerHTML = '';
+      warning.classList.add('hidden');
+      confirmBtn.disabled = false;
+
+      const compatibleTables = TABLES.filter(t => t.capacity >= party);
+      const safeTables = [];
+
+      compatibleTables.forEach(t => {
+        const conflicts = reservations.filter(r => {
+          if (r.table !== t.id || r.status === 'CANCELLED') return false;
+          return Math.abs(r.time.localeCompare(time)) === 0;
+        });
+
+        if (conflicts.length === 0) {
+          safeTables.push(t);
+        }
+      });
+
+      if (safeTables.length === 0) {
+        warning.textContent = `⚠️ No tables available at ${time} for a party of ${party} without bumping an existing reservation.`;
+        warning.classList.remove('hidden');
+        confirmBtn.disabled = true;
+      } else {
+        safeTables.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.id;
+          opt.textContent = `${t.name} (Fits ${t.capacity} guests)`;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    function confirmSeatWalkin() {
+      const name = document.getElementById('walkin-name').value.trim() || 'Walk-in Guest';
+      const party = Number(document.getElementById('walkin-party').value);
+      const time = document.getElementById('walkin-time').value;
+      const tableId = document.getElementById('walkin-table-select').value;
+      const notes = document.getElementById('walkin-notes').value.trim();
+
+      if (!tableId) return;
+
+      const newBooking = {
+        id: 'W_' + Date.now(),
+        time: time,
+        table: tableId,
+        name: name,
+        party: party,
+        phone: 'Walk-in',
+        notes: notes || 'Walk-in seated via Continuity Mode',
+        status: 'SEATED'
+      };
+
+      reservations.push(newBooking);
+      saveState();
+      closeWalkinModal();
+      showToast(`Walk-in party seated at ${tableId}!`);
+    }
+
+    // TABLE MODAL LOGIC
+    function openTableModal(tableId) {
+      const table = TABLES.find(t => t.id === tableId);
+      const tableRes = reservations.filter(r => r.table === tableId && r.status !== 'CANCELLED');
+      const modal = document.getElementById('table-modal');
+      const title = document.getElementById('modal-table-title');
+      const content = document.getElementById('modal-table-content');
+
+      title.textContent = `${table.name} (${table.capacity}-Top)`;
+      
+      let resListHtml = '';
+      if (tableRes.length === 0) {
+        resListHtml = `<p class="text-slate-400 italic">No bookings assigned to this table tonight.</p>`;
+      } else {
+        tableRes.sort((a,b) => a.time.localeCompare(b.time)).forEach(r => {
+          resListHtml += `
+            <div class="bg-slate-950 p-2.5 rounded border border-slate-800 space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="font-bold text-amber-400 font-mono">${r.time}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded ${r.status === 'SEATED' ? 'bg-emerald-950 text-emerald-300' : 'bg-blue-950 text-blue-300'}">${r.status}</span>
+              </div>
+              <div class="text-slate-200 font-medium">${r.name} (${r.party} guests)</div>
+              <div class="text-slate-400 text-[11px]">${r.phone}</div>
+              ${r.notes ? `<div class="text-slate-500 text-[10px] italic">${r.notes}</div>` : ''}
+              <div class="pt-2 flex gap-1">
+                ${r.status !== 'SEATED' ? `<button onclick="updateResStatus('${r.id}', 'SEATED'); closeTableModal();" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded text-[10px]">Seat Now</button>` : ''}
+                ${r.status === 'SEATED' ? `<button onclick="updateResStatus('${r.id}', 'FINISHED'); closeTableModal();" class="bg-slate-700 text-slate-200 px-2 py-0.5 rounded text-[10px]">Clear Table</button>` : ''}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      content.innerHTML = `
+        <div class="text-slate-400 mb-2">Section: <strong class="text-slate-200 uppercase">${table.section}</strong></div>
+        <div class="space-y-2">
+          ${resListHtml}
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeTableModal() {
+      document.getElementById('table-modal').classList.add('hidden');
+    }
+
+    // PARSE DIGEST INPUT
+    function loadSampleDigest() {
+      document.getElementById('raw-digest-input').value = SAMPLE_RAW_EMAIL;
+      showToast('Loaded 2:00 PM Resy Shift Email sample!');
+    }
+
+    function parseDigestInput() {
+      const raw = document.getElementById('raw-digest-input').value.trim();
+      if (!raw) {
+        alert('Please paste the email text first.');
+        return;
+      }
+
+      const lines = raw.split('\n');
+      const parsed = [];
+
+      lines.forEach((line, index) => {
+        if (line.includes('|')) {
+          const parts = line.split('|').map(s => s.trim());
+          if (parts.length >= 4) {
+            const time = parts[0];
+            const tableRaw = parts[1].replace('Table ', 'T').replace('High-Top ', 'T');
+            const name = parts[2];
+            const party = parseInt(parts[3]) || 2;
+            const phone = parts[4] || 'No Phone';
+            const notes = parts[5] || '';
+
+            parsed.push({
+              id: 'P_' + index,
+              time: time,
+              table: tableRaw,
+              name: name,
+              party: party,
+              phone: phone,
+              notes: notes,
+              status: 'UNVERIFIED'
+            });
+          }
+        }
+      });
+
+      if (parsed.length > 0) {
+        reservations = parsed;
+        saveState();
+        switchTab('manifest');
+        showToast(`Successfully parsed and loaded ${parsed.length} reservations!`);
+      } else {
+        alert('Could not detect the standard format. Please check the text or try the Sample Email button.');
+      }
+    }
+
+    function resetToInitialState() {
+      if (confirm('Reset to initial demo state?')) {
+        reservations = INITIAL_RESERVATIONS;
+        onlineQueue = [];
+        saveState();
+        showToast('Reset to initial book.');
+      }
+    }
+
+    // INITIALIZATION
+    window.addEventListener('DOMContentLoaded', () => {
+      saveState();
+    });
+  </script>
+</body>
+</html>
