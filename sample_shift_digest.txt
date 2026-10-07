@@ -1,0 +1,4 @@
+Restaurant Shift Digest — FICTIONAL SAMPLE, not an official Resy schema
+8:15 PM | Alex Demo Guest | 2 | T02 | 555-0100
+8:30 PM | Rowan Demo Guest | 4 | T06 | 555-0102
+9:15 PM | Quinn Demo Guest | 2 | P02 | 555-0103
