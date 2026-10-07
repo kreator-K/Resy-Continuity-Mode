@@ -5,17 +5,29 @@
 
 ---
 
-## 1. Executive Summary & Pitch Hook (30 Seconds)
+## 1. Problem Context & Explicit Operational Assumptions
 
-> *"It’s 4:30 PM on a Friday. Your restaurant has 140 covers booked, representing $18,000 in revenue. Suddenly, Resy goes dark. The host stand iPad is frozen. Diners trying to book online see 500 server errors, and dinner service starts in 30 minutes.*  
-> 
-> *Most restaurants face two bad choices: either turn off all new bookings and bleed high-margin margin, or accept bookings blindly and face catastrophic double-bookings.*  
-> 
-> *We built **Restaurant Continuity Mode**: an incident-response operating system that reconstructs tonight's book from ambient data, safeguards kitchen pacing, and provides a **failover online booking portal** that allows guests to reserve open tables with a 100% guarantee against double-booking."*
+The case specifies that **Resy goes offline early in the afternoon, and dinner service is approaching**.  
+To ground the incident response realistically, we define the following operational assumptions:
+
+1. **Outage Detected at 2:00 PM (Early Afternoon)**: Resy's backend suffers a total failure. The automated 2:00 PM daily shift digest email sent to managers is the **last synchronized snapshot of ground truth**.
+2. **Doors Open at 5:00 PM / First Turn at 5:30 PM**: The restaurant has a **3-hour triage runway** (2:00 PM – 5:00 PM) to assess the outage, verify bookings, and establish operating protocol before guests arrive.
+3. **The 4:30 PM Pre-Shift Milestone**: At 4:30 PM (30 minutes prior to doors open), the GM runs pre-shift staff lineup, locks the manifest, prints emergency paper clipboards, and exposes safe second-turn slots on the online emergency booking portal.
+4. **Live Service Simulation (5:45 PM Clock)**: The interactive prototype simulates service at 5:45 PM—in the middle of the first seating rush—to demonstrate live table management, kitchen pacing, walk-ins, and online request dispatch.
 
 ---
 
-## 2. How Continuity Mode Solves the "Online Booking Issue"
+## 2. 30-Second Elevator Pitch for Judges
+
+> *"It’s 2:00 PM on a Friday. Resy has just gone dark nationwide. Your restaurant has 140 covers booked for dinner tonight, representing $18,000 in revenue. Doors open in 3 hours.*  
+> 
+> *Most restaurants face two bad choices: either shut off all new bookings and bleed high-margin revenue, or accept walk-ins and web forms blindly and face catastrophic double-bookings.*  
+> 
+> *We built **Restaurant Continuity Mode**: an incident-response operating system that reconstructs tonight's book from the 2:00 PM email digest, gives staff a structured triage workflow, protects kitchen pacing, and provides a **gated failover online booking portal** that allows guests to reserve open tables with a 100% guarantee against double-booking."*
+
+---
+
+## 3. How Continuity Mode Solves the "Online Booking Issue"
 
 When Resy crashes, online booking presents a dangerous catch-22:
 1. **The Diner Failure**: Anyone clicking "Reserve" on the restaurant's website, Instagram link, or Google Maps gets an error.
@@ -31,7 +43,7 @@ When Resy crashes, online booking presents a dangerous catch-22:
 
 ---
 
-## 3. Live 3-Minute Hackathon Demo Script
+## 4. Live 3-Minute Hackathon Demo Script
 
 ### Step 1: The Outage & Ingestion (Tab 5: Ingest Backup Data)
 * **Action:** Go to **"Ingest Backup Data"**. Click **"Load Sample 2:00 PM Email"** then **"Parse & Reconstruct Book"**.
@@ -39,7 +51,7 @@ When Resy crashes, online booking presents a dangerous catch-22:
 
 ### Step 2: The Host Stand Run-Sheet & Triage (Tab 1: Host Run-Sheet)
 * **Action:** Show the manifest. Point out amber `CALL NEEDED` badges. Click **"✓ Confirm"** on Hannah Wright.
-* **Talking Point:** *"The host immediately triages: calling unverified guests to confirm arrival. This cleans the book and frees up uncommitted tables."*
+* **Talking Point:** *"Between 2:30 PM and 4:30 PM, the host team executes phone triage: calling unverified guests while they are still at their desks. This cleans the book and frees up uncommitted tables."*
 
 ### Step 3: THE ONLINE BOOKING DEMO (Tab 4: Online Diner Portal)
 * **Action:** Switch to **"Online Diner Portal"**. Click **"⚡ Simulate Diner Request"**.
@@ -59,7 +71,7 @@ When Resy crashes, online booking presents a dangerous catch-22:
 
 ---
 
-## 4. Key Metrics & Judge Takeaways
+## 5. Key Metrics & Judge Takeaways
 
 | Metric | Target | Business Impact |
 | :--- | :--- | :--- |

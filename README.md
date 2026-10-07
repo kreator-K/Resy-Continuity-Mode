@@ -9,12 +9,23 @@
 
 ---
 
-## 📌 Executive Summary & Problem Context
+## 📌 Problem Context & Explicit Operational Assumptions
 
-On a busy Friday afternoon at 4:30 PM, a restaurant's primary reservation platform (e.g., Resy) suffers a total outage. The front-of-house host stand iPad freezes, guest lists disappear, and diners attempting to reserve online receive HTTP 500 server errors. Service begins in 30 minutes, with 140 expected covers representing $18,000 in perishable food, beverage, and labor commitments.
+The problem premise specifies that **Resy goes offline early in the afternoon with dinner service approaching**. To model the operational response accurately, we state the following concrete operational timeline and assumptions:
+
+### Operational Timeline & Assumptions:
+
+| Time | Phase | Operational Reality & Actions |
+| :--- | :--- | :--- |
+| **02:00 PM** *(Early Afternoon)* | **Outage Detected** | Resy goes dark nationwide. Resy's daily 2:00 PM automated shift digest email serves as the **last verified snapshot of ground truth** before platform failure. |
+| **02:15 PM – 02:30 PM** | **Triage Activation** | GM realizes the outage is persistent. Staff activate **Resy Continuity Mode**, ingest the 2:00 PM email recap, and reconstruct the floor book. |
+| **02:30 PM – 04:30 PM** | **The 2-Hour Golden Window** | Front-of-house staff conduct phone verification calls to guests while they are still at their desks/phones, locking confirmed parties and identifying early cancellations. |
+| **04:30 PM** *(Late Afternoon)* | **Pre-Shift Staff Lineup** | 30 minutes before doors open. Triage window closes. Host stand prints emergency run-sheets for clipboards, sets kitchen pacing throttles, and exposes safe second-turn slots on the online emergency widget. |
+| **05:00 PM – 05:30 PM** | **Doors Open / Service Begins** | First dinner turn begins. Floor map transitions to active service mode. |
+| **05:45 PM** *(Demo Simulation Time)* | **Peak Rush Execution** | The simulated clock in the interactive prototype models active dinner service (seated tables, live turns, walk-in arrivals, and inbound online requests). |
 
 ### The Host Stand Dilemma:
-1. **The Double-Booking Trap**: If the restaurant accepts new walk-ins or uncoordinated online requests blindly, they risk giving away tables to walk-ins when confirmed guests show up with email confirmations.
+1. **The Double-Booking Trap**: If the restaurant accepts new walk-ins or uncoordinated online requests blindly, they risk giving away tables when confirmed guests arrive with email confirmations.
 2. **The Revenue Bleed**: If the restaurant panics and locks the doors or refuses walk-ins, they suffer massive unrecoverable revenue loss and empty dining rooms.
 3. **The Kitchen Crash**: Uncontrolled seating destroys kitchen pacing, resulting in stacked tickets, long wait times, and ruined diner experiences.
 
@@ -27,7 +38,7 @@ On a busy Friday afternoon at 4:30 PM, a restaurant's primary reservation platfo
 ```text
  ┌──────────────────────────────────────────────────────────────────┐
  │                     Ambient Digital Exhaust                      │
- │   • 2:00 PM Resy Automated Shift Digest Email                    │
+ │   • 2:00 PM Resy Automated Shift Digest Email (Last Snapshot)    │
  │   • POS Pre-Authorization Dumps (Toast, Micros, Square)          │
  │   • Transactional Confirmation Receipts & SMS Records            │
  └────────────────────────────────┬─────────────────────────────────┘
@@ -131,17 +142,10 @@ start index.html
 
 ---
 
-## 🎯 3-Minute Hackathon Demo Script
+## 🎯 Hackathon Presentation & Pitch Assets
 
-For a step-by-step presentation script tailored for hackathon judges, consult:
+For a step-by-step presentation script tailored for hackathon judges, consult:  
 👉 **[`DEMO_PITCH.md`](DEMO_PITCH.md)**
-
-### Key Moments to Highlight During Demo:
-1. **The Hook**: Explain the 4:30 PM Friday outage scenario and the risk of empty tables vs. double-bookings.
-2. **Ingestion (Tab 5)**: Load the sample 2:00 PM email and click **Parse & Reconstruct Book**.
-3. **Host Triage (Tab 1)**: Confirm an unverified party to show immediate status synchronization.
-4. **Online Booking (Tab 4)**: Click **Simulate Diner Request** on the phone mockup, then tap **One-Tap Approve** on the host dispatcher to show the instant SMS pass.
-5. **Walk-In Safety (Header Button)**: Open **Seat Walk-In** and demonstrate how conflicting tables are automatically blocked.
 
 ---
 
