@@ -1,2 +1,13 @@
+[project]
+name = "resy-continuity-mode"
+version = "0.1.0"
+description = "Fictional-data-only hackathon demo of restaurant reservation continuity"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.110,<1",
+  "pydantic>=2,<3",
+  "uvicorn>=0.25,<1",
+]
+
 [tool.vercel]
 entrypoint = "api:app"
